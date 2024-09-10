@@ -1,13 +1,14 @@
-import {defer} from '@shopify/remix-oxygen';
-import {Await, useLoaderData, Link} from '@remix-run/react';
-import {Suspense} from 'react';
-import {Image, Money} from '@shopify/hydrogen';
+import { defer } from '@shopify/remix-oxygen';
+import { Await, useLoaderData, Link } from '@remix-run/react';
+import { Suspense } from 'react';
+import { Image, Money } from '@shopify/hydrogen';
+import HeroBanner from '../components/HeroBanner';
 
 /**
  * @type {MetaFunction}
  */
 export const meta = () => {
-  return [{title: 'Hydrogen | Home'}];
+  return [{ title: 'Hydrogen | Home' }];
 };
 
 /**
@@ -20,7 +21,10 @@ export async function loader(args) {
   // Await the critical data required to render initial state of the page
   const criticalData = await loadCriticalData(args);
 
-  return defer({...deferredData, ...criticalData});
+  // Fetch hero banner data
+  const heroBannerData = await loadHeroBannerData(args);
+
+  return defer({ ...deferredData, ...criticalData, heroBannerData });
 }
 
 /**
@@ -28,8 +32,8 @@ export async function loader(args) {
  * needed to render the page. If it's unavailable, the whole page should 400 or 500 error.
  * @param {LoaderFunctionArgs}
  */
-async function loadCriticalData({context}) {
-  const [{collections}] = await Promise.all([
+async function loadCriticalData({ context }) {
+  const [{ collections }] = await Promise.all([
     context.storefront.query(FEATURED_COLLECTION_QUERY),
     // Add other queries here, so that they are loaded in parallel
   ]);
@@ -45,7 +49,7 @@ async function loadCriticalData({context}) {
  * Make sure to not throw any errors here, as it will cause the page to 500.
  * @param {LoaderFunctionArgs}
  */
-function loadDeferredData({context}) {
+function loadDeferredData({ context }) {
   const recommendedProducts = context.storefront
     .query(RECOMMENDED_PRODUCTS_QUERY)
     .catch((error) => {
@@ -59,11 +63,49 @@ function loadDeferredData({context}) {
   };
 }
 
+/**
+ * Load hero banner metafields.
+ * @param {LoaderFunctionArgs}
+ */
+
+
+async function loadHeroBannerData({ context }) {
+  try {
+    const { collection } = await context.storefront.query(HERO_BANNER_QUERY);
+    
+    // Log raw data response
+    // console.log('Raw Hero Banner Data:', collection);
+
+    // Access the specific metafield
+    const metafields = collection?.metafields || [];
+    console.log('Extracted Metafields:', metafields);
+
+    // Transform metafield data
+    const heroBanner = metafields.length > 0 ? metafields[0].reference?.image?.url : null;
+    
+    console.log('Hero Banner Image URL:', heroBanner);
+
+    return {
+      heroBannerData: {
+        imageUrl: heroBanner,
+      },
+    };
+  } catch (error) {
+    console.error('Error loading hero banner data:', error);
+    return {
+      heroBannerData: {},
+    };
+  }
+}
+
+
 export default function Homepage() {
   /** @type {LoaderReturnData} */
   const data = useLoaderData();
+  
   return (
     <div className="home">
+      <HeroBanner data={data.heroBannerData} />
       <FeaturedCollection collection={data.featuredCollection} />
       <RecommendedProducts products={data.recommendedProducts} />
     </div>
@@ -75,7 +117,8 @@ export default function Homepage() {
  *   collection: FeaturedCollectionFragment;
  * }}
  */
-function FeaturedCollection({collection}) {
+function FeaturedCollection({ collection }) {
+  
   if (!collection) return null;
   const image = collection?.image;
   return (
@@ -98,7 +141,7 @@ function FeaturedCollection({collection}) {
  *   products: Promise<RecommendedProductsQuery | null>;
  * }}
  */
-function RecommendedProducts({products}) {
+function RecommendedProducts({ products }) {
   return (
     <div className="recommended-products">
       <h2>Recommended Products</h2>
@@ -133,6 +176,10 @@ function RecommendedProducts({products}) {
     </div>
   );
 }
+
+/**
+ * GraphQL queries for the page
+ */
 
 const FEATURED_COLLECTION_QUERY = `#graphql
   fragment FeaturedCollection on Collection {
@@ -187,6 +234,33 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
   }
 `;
+const HERO_BANNER_QUERY = `#graphql
+  query  {
+    collection(id: "gid://shopify/Collection/310295396509") {
+      metafields(identifiers: [{ namespace: "hero_image", key: "hero_banner" }]) {
+          reference {
+        ... on MediaImage {
+          image {
+            url
+          }
+        }
+        }
+        }
+    }
+  }
+`;
+// const HERO_BANNER_QUERY = `#graphql
+//   query  {
+//     collection(id: "gid://shopify/Collection/310295396509") {
+//       metafields(identifiers: [{ namespace: "hero_image", key: "hero_banner" }]) {
+//           namespace
+//           key
+//           value
+//           type
+//         }
+//     }
+//   }
+// `;
 
 /** @typedef {import('@shopify/remix-oxygen').LoaderFunctionArgs} LoaderFunctionArgs */
 /** @template T @typedef {import('@remix-run/react').MetaFunction<T>} MetaFunction */
