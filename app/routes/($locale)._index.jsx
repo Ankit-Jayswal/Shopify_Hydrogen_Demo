@@ -74,14 +74,14 @@ async function loadHeroBannerData({ context }) {
     const { collection } = await context.storefront.query(HERO_BANNER_QUERY);
     
     // Log raw data response
-    // console.log('Raw Hero Banner Data:', collection);
+    console.log('Raw Hero Banner Data:', collection);
 
     // Access the specific metafield
     const metafields = collection?.metafields || [];
     console.log('Extracted Metafields:', metafields);
 
     // Transform metafield data
-    const heroBanner = metafields.length > 0 ? metafields[0].reference?.image?.url : null;
+    const heroBanner = metafields.length > 0 ? metafields[0].reference.image.url : null;
     
     console.log('Hero Banner Image URL:', heroBanner);
 

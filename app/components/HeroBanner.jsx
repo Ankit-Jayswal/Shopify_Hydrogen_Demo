@@ -23,7 +23,7 @@ function HeroBanner({ data }) {
     return (
         <section className="hero-banner">
             {heroBanner && (
-                <img src={heroBanner} alt={title} className="hero-banner-image" />
+                <img src={heroBanner} alt={title} className="hero-banner-image" height={500} width={1300} />
             )}
             <div className="hero-banner-content">
                 <h1>{title}</h1>
